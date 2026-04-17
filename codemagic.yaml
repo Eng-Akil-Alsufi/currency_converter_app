@@ -10,7 +10,6 @@ workflows:
         PACKAGE_NAME: "com.example.currencyconverter"
       node: latest
       java: 17
-      android_sdk: 33
     triggering:
       events:
         - push
