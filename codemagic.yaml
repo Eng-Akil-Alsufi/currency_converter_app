@@ -1,0 +1,39 @@
+workflows:
+  android-workflow:
+    name: Android Java Currency Converter Workflow
+    max_build_duration: 60
+    instance_type: mac_mini_m1
+    environment:
+      groups:
+        - google_play # Optional: if you have signing keys
+      vars:
+        PACKAGE_NAME: "com.example.currencyconverter"
+      node: latest
+      java: 17
+      android_sdk: 33
+    triggering:
+      events:
+        - push
+        - tag
+        - pull_request
+      branch_patterns:
+        - pattern: 'main'
+          include: true
+          source: true
+    scripts:
+      - name: Set up local.properties
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+      - name: Build Android APK
+        script: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+    artifacts:
+      - app/build/outputs/apk/**/*.apk
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com # Replace with your email if you want notifications
+        notify:
+          success: true
+          failure: true
