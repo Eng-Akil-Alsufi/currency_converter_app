@@ -19,14 +19,19 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Fix Project Configuration
+      - name: Fix Project Configuration and Missing Resources
         run: |
-          # Enable AndroidX
+          # 1. Enable AndroidX
           echo "android.useAndroidX=true" > gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
           
-          # Fix Namespace Conflict in build.gradle
-          # This ensures testNamespace is different from namespace
+          # 2. Fix Namespace and Missing Icon references in AndroidManifest
+          # We will use the default android icon if the custom ones are missing
+          sed -i 's/android:icon="@mipmap\/ic_launcher"/android:icon="@android:drawable\/ic_menu_gallery"/g' app/src/main/AndroidManifest.xml
+          sed -i 's/android:roundIcon="@mipmap\/ic_launcher_round"//g' app/src/main/AndroidManifest.xml
+          
+          # 3. Ensure Namespace is set correctly in build.gradle
+          # Remove package from Manifest to avoid conflict if necessary, but AGP 7.3.1 prefers it in build.gradle
           sed -i '/namespace .com.example.currencyconverter./a \        testNamespace "com.example.currencyconverter.test"' app/build.gradle
 
       - name: Setup Gradle 7.5
