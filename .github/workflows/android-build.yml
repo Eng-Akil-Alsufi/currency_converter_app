@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK (Pro)
 
 on:
   workflow_dispatch:
@@ -19,27 +19,31 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Fix Project Configuration and Missing Resources
+      - name: Fix Project Configuration and Resources
         run: |
-          # 1. Enable AndroidX
+          # 1. Enable AndroidX and Jetifier
           echo "android.useAndroidX=true" > gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
           
           # 2. Fix Namespace and Missing Icon references in AndroidManifest
-          # We will use the default android icon if the custom ones are missing
-          sed -i 's/android:icon="@mipmap\/ic_launcher"/android:icon="@android:drawable\/ic_menu_gallery"/g' app/src/main/AndroidManifest.xml
+          # Use a standard Android drawable to avoid build failure due to missing mipmap
+          sed -i 's/android:icon="@mipmap\/ic_launcher"/android:icon="@android:drawable\/sym_def_app_icon"/g' app/src/main/AndroidManifest.xml
           sed -i 's/android:roundIcon="@mipmap\/ic_launcher_round"//g' app/src/main/AndroidManifest.xml
           
-          # 3. Ensure Namespace is set correctly in build.gradle
-          # Remove package from Manifest to avoid conflict if necessary, but AGP 7.3.1 prefers it in build.gradle
+          # 3. Fix Namespace Conflict in build.gradle
+          # Ensure testNamespace is different from namespace
           sed -i '/namespace .com.example.currencyconverter./a \        testNamespace "com.example.currencyconverter.test"' app/build.gradle
+          
+          # 4. Add ABI support for Emulators (Appetize.io)
+          # This ensures the APK contains code for x86_64 and armeabi-v7a/arm64-v8a
+          sed -i '/defaultConfig {/a \        ndk { abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64" }' app/build.gradle
 
       - name: Setup Gradle 7.5
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '7.5'
 
-      - name: Build with Gradle
+      - name: Build Debug APK
         run: gradle assembleDebug
 
       - name: Upload APK
