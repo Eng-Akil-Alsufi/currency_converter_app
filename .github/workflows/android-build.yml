@@ -1,4 +1,4 @@
-name: Build Android APK (Pro)
+name: Build Android APK (Final Fix)
 
 on:
   workflow_dispatch:
@@ -19,24 +19,61 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Fix Project Configuration and Resources
+      - name: Absolute Project Fix
         run: |
-          # 1. Enable AndroidX and Jetifier
+          # 1. Force AndroidX
           echo "android.useAndroidX=true" > gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
           
-          # 2. Fix Namespace and Missing Icon references in AndroidManifest
-          # Use a standard Android drawable to avoid build failure due to missing mipmap
+          # 2. Complete rewrite of build.gradle to ensure absolute compatibility
+          cat <<EOF > app/build.gradle
+          plugins {
+              id 'com.android.application'
+          }
+          
+          android {
+              namespace 'com.example.currencyconverter'
+              compileSdk 33
+          
+              defaultConfig {
+                  applicationId "com.example.currencyconverter"
+                  minSdk 24
+                  targetSdk 33
+                  versionCode 1
+                  versionName "1.0"
+                  testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+                  ndk {
+                      abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+                  }
+              }
+          
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                  }
+                  debug {
+                      debuggable true
+                  }
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_1_8
+                  targetCompatibility JavaVersion.VERSION_1_8
+              }
+          }
+          
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'com.google.android.material:material:1.8.0'
+              implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+          }
+          EOF
+          
+          # 3. Fix Manifest - Remove package attribute and fix icons
+          # This is the key to fixing the "deprecated" warning and making it valid for Appetize
+          sed -i 's/package="com.example.currencyconverter"//g' app/src/main/AndroidManifest.xml
           sed -i 's/android:icon="@mipmap\/ic_launcher"/android:icon="@android:drawable\/sym_def_app_icon"/g' app/src/main/AndroidManifest.xml
           sed -i 's/android:roundIcon="@mipmap\/ic_launcher_round"//g' app/src/main/AndroidManifest.xml
-          
-          # 3. Fix Namespace Conflict in build.gradle
-          # Ensure testNamespace is different from namespace
-          sed -i '/namespace .com.example.currencyconverter./a \        testNamespace "com.example.currencyconverter.test"' app/build.gradle
-          
-          # 4. Add ABI support for Emulators (Appetize.io)
-          # This ensures the APK contains code for x86_64 and armeabi-v7a/arm64-v8a
-          sed -i '/defaultConfig {/a \        ndk { abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64" }' app/build.gradle
 
       - name: Setup Gradle 7.5
         uses: gradle/actions/setup-gradle@v4
