@@ -19,6 +19,16 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Fix Project Configuration
+        run: |
+          # Enable AndroidX
+          echo "android.useAndroidX=true" > gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
+          
+          # Fix Namespace Conflict in build.gradle
+          # This ensures testNamespace is different from namespace
+          sed -i '/namespace .com.example.currencyconverter./a \        testNamespace "com.example.currencyconverter.test"' app/build.gradle
+
       - name: Setup Gradle 7.5
         uses: gradle/actions/setup-gradle@v4
         with:
